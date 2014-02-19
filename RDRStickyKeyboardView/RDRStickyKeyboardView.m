@@ -40,17 +40,17 @@
  * and inputViewBounds have equal sizes.
  */
 static BOOL RDRKeyboardSizeEqualsInputViewSize(CGRect keyboardFrame,
-                                               CGRect inputViewBounds) {
+        CGRect inputViewBounds) {
     // Convert keyboardFrame
     UIWindow *window = [[UIApplication sharedApplication] keyWindow];
     UIView *view = window.rootViewController.view;
     CGRect convertedRect = [view convertRect:keyboardFrame
                                     fromView:nil];
-    
+
     if (CGSizeEqualToSize(convertedRect.size, inputViewBounds.size)) {
         return YES;
     }
-    
+
     return NO;
 }
 
@@ -66,25 +66,25 @@ static BOOL RDRKeyboardSizeEqualsInputViewSize(CGRect keyboardFrame,
  * both parameters to view coordinates.
  */
 static BOOL RDRKeyboardFrameChangeIsShowHideAnimation(CGRect beginFrame,
-                                                      CGRect endFrame) {
+        CGRect endFrame) {
     UIWindow *window = [[UIApplication sharedApplication] keyWindow];
     UIView *view = window.rootViewController.view;
-    
+
     // Convert the begin frame to view coordinates
     CGRect beginFrameConverted = [view convertRect:beginFrame
                                           fromView:nil];
-    
+
     // Convert the end frame to view coordinates
     CGRect endFrameConverted = [view convertRect:endFrame
                                         fromView:nil];
-    
+
     // New and old keyboard origin should differ exactly
     // one keyboard height
     if (fabs(endFrameConverted.origin.y - beginFrameConverted.origin.y)
-        != endFrameConverted.size.height) {
+            != endFrameConverted.size.height) {
         return NO;
     }
-    
+
     return YES;
 }
 
@@ -101,12 +101,12 @@ static BOOL RDRKeyboardIsFullyShown(CGRect keyboardFrame) {
     UIView *view = window.rootViewController.view;
     CGRect convertedRect = [view convertRect:keyboardFrame
                                     fromView:nil];
-    
+
     if ((view.bounds.size.height - convertedRect.size.height)
-        != convertedRect.origin.y) {
+            != convertedRect.origin.y) {
         return NO;
     }
-    
+
     return YES;
 }
 
@@ -123,18 +123,18 @@ static BOOL RDRKeyboardIsFullyHidden(CGRect keyboardFrame) {
     // is fullscreen.
     UIWindow *window = [[UIApplication sharedApplication] keyWindow];
     UIView *view = window.rootViewController.view;
-    
+
     // Convert rect to view coordinates, which will
     // adjust the frame for rotation.
     CGRect convertedRect = [view convertRect:keyboardFrame
                                     fromView:nil];
-    
+
     // Compare against the view's bounds, NOT the frame
     // since the bounds are adjusted to rotation.
     if (view.bounds.size.height != convertedRect.origin.y) {
         return NO;
     }
-    
+
     return YES;
 }
 
@@ -149,26 +149,26 @@ static BOOL RDRKeyboardIsFullyHidden(CGRect keyboardFrame) {
 static inline CGFloat RDRTextViewHeight(UITextView *textView) {
     NSTextContainer *textContainer = textView.textContainer;
     CGRect textRect =
-    [textView.layoutManager usedRectForTextContainer:textContainer];
-    
+            [textView.layoutManager usedRectForTextContainer:textContainer];
+
     CGFloat textViewHeight = textRect.size.height +
-    textView.textContainerInset.top + textView.textContainerInset.bottom;
-    
+            textView.textContainerInset.top + textView.textContainerInset.bottom;
+
     return textViewHeight;
 }
 
 static CGFloat RDRContentOffsetForBottom(UIScrollView *scrollView) {
     CGFloat contentHeight = scrollView.contentSize.height;
     CGFloat scrollViewHeight = scrollView.bounds.size.height;
-    
+
     UIEdgeInsets contentInset = scrollView.contentInset;
     CGFloat bottomInset = contentInset.bottom;
     CGFloat topInset = contentInset.top;
-    
+
     CGFloat contentOffsetY;
     contentOffsetY = contentHeight - (scrollViewHeight - bottomInset);
     contentOffsetY = MAX(contentOffsetY, -topInset);
-    
+
     return contentOffsetY;
 }
 
@@ -178,14 +178,14 @@ static inline UIViewAnimationOptions RDRAnimationOptionsForCurve(UIViewAnimation
 
 #pragma mark - RDRKeyboardInputView
 
-#define RDR_KEYBOARD_INPUT_VIEW_MARGIN_VERTICAL                     5
-#define RDR_KEYBOARD_INPUT_VIEW_MARGIN_HORIZONTAL                   8
+#define RDR_KEYBOARD_INPUT_VIEW_MARGIN_VERTICAL                     0
+#define RDR_KEYBOARD_INPUT_VIEW_MARGIN_HORIZONTAL                   0
 #define RDR_KEYBOARD_INPUT_VIEW_MARGIN_BUTTONS_VERTICAL             7
 
 @interface RDRKeyboardInputView () {
     UITextView *_textView;
-    UIButton *_leftButton;
-    UIButton *_rightButton;
+    UIView *_leftView;
+    UIView *_rightView;
 }
 
 @property (nonatomic, strong, readonly) UIToolbar *toolbar;
@@ -203,7 +203,7 @@ static inline UIViewAnimationOptions RDRAnimationOptionsForCurve(UIViewAnimation
     {
         [self _setupSubviews];
     }
-    
+
     return self;
 }
 
@@ -214,7 +214,7 @@ static inline UIViewAnimationOptions RDRAnimationOptionsForCurve(UIViewAnimation
     if (_textView != nil) {
         return _textView;
     }
-    
+
     _textView = [UITextView new];
     self.textView.font = [UIFont systemFontOfSize:15.0f];
     self.textView.layer.cornerRadius = 5.0f;
@@ -223,135 +223,252 @@ static inline UIViewAnimationOptions RDRAnimationOptionsForCurve(UIViewAnimation
                                                        green:200.0f/255.0f
                                                         blue:205.0f/255.0f
                                                        alpha:1.0f].CGColor;
-    
+
     return self.textView;
 }
 
-- (UIButton *)leftButton
+- (UIView *)leftView
 {
-    if (_leftButton != nil) {
-        return _leftButton;
-    }
-    
-    _leftButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    _leftButton.titleLabel.font = [UIFont systemFontOfSize:15.0f];
-    
-    [_leftButton setTitle:NSLocalizedString(@"Other", nil)
-                 forState:UIControlStateNormal];
-    
-    return _leftButton;
+    return _leftView;
 }
 
-- (UIButton *)rightButton
+- (UIView *)rightView
 {
-    if (_rightButton != nil) {
-        return _rightButton;
-    }
-    
-    _rightButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    _rightButton.titleLabel.font = [UIFont systemFontOfSize:14.0f];
-    
-    [_rightButton setTitle:NSLocalizedString(@"Send", nil)
-                  forState:UIControlStateNormal];
-    
-    return _rightButton;
+    return _rightView;
 }
 
 #pragma mark - Private
+- (void)setLeftView:(UIView *)leftView {
+    _leftView = leftView;
+    [self _setupSubviews];
+}
+
+- (void)setRightView:(UIView *)rightView {
+    _rightView = rightView;
+    [self _setupSubviews];
+}
+
+- (void)setTextView:(UITextView *)textView {
+    _textView = textView;
+    [self _setupSubviews];
+}
 
 - (void)_setupSubviews
 {
+    [self.subviews makeObjectsPerformSelector:@selector(removeFromSuperview)];
     _toolbar = [UIToolbar new];
     _toolbar.translucent = YES;
     [self addSubview:self.toolbar];
-    
-    [self addSubview:self.leftButton];
-    [self addSubview:self.rightButton];
+
+    [self addSubview:self.leftView];
+    [self addSubview:self.rightView];
     [self addSubview:self.textView];
-    
+
     [self _setupConstraints];
 }
 
 - (void)_setupConstraints
 {
+    [self removeConstraints:self.constraints];
     // Calculate frame with current settings
     CGFloat height = RDRTextViewHeight(self.textView) +
-    (2 * RDR_KEYBOARD_INPUT_VIEW_MARGIN_VERTICAL);
+            (2 * _keyboardInputViewMarginVertical);
     height = roundf(height);
-    
+
     CGRect newFrame = self.frame;
     newFrame.size.height = height;
     self.frame = newFrame;
-    
+
     // Calculate button margin with new frame height
-    [self.leftButton sizeToFit];
-    [self.rightButton sizeToFit];
-    
-    CGFloat leftButtonMargin =
-    roundf((height - self.leftButton.frame.size.height) / 2.0f);
-    CGFloat rightButtonMargin =
-    roundf((height - self.rightButton.frame.size.height) / 2.0f);
-    
-    leftButtonMargin = roundf(leftButtonMargin);
-    rightButtonMargin = roundf(rightButtonMargin);
-    
+    [self.leftView sizeToFit];
+    [self.rightView sizeToFit];
+
+    CGFloat leftViewMargin =
+            roundf((height - self.leftView.frame.size.height) / 2.0f);
+    CGFloat rightViewMargin =
+            roundf((height - self.rightView.frame.size.height) / 2.0f);
+    if (rightViewMargin < 0)
+        rightViewMargin = 0;
+
+    leftViewMargin = roundf(leftViewMargin);
+    rightViewMargin = roundf(rightViewMargin);
+
     // Set autolayout property
     self.toolbar.translatesAutoresizingMaskIntoConstraints = NO;
-    self.leftButton.translatesAutoresizingMaskIntoConstraints = NO;
-    self.rightButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.leftView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.rightView.translatesAutoresizingMaskIntoConstraints = NO;
     self.textView.translatesAutoresizingMaskIntoConstraints = NO;
-    
+
     // Define constraints
     NSArray *constraints = nil;
     NSString *visualFormat = nil;
-    NSDictionary *views = @{ @"leftButton" : self.leftButton,
-                             @"rightButton" : self.rightButton,
-                             @"textView" : self.textView,
-                             @"toolbar" : self.toolbar};
-    NSDictionary *metrics = @{ @"hor" : @(RDR_KEYBOARD_INPUT_VIEW_MARGIN_HORIZONTAL),
-                               @"ver" : @(RDR_KEYBOARD_INPUT_VIEW_MARGIN_VERTICAL),
-                               @"leftButtonMargin" : @(leftButtonMargin),
-                               @"rightButtonMargin" : @(rightButtonMargin)};
-    
+    if (self.leftView && self.rightView) {
+        NSDictionary *views = @{ @"leftView" : self.leftView,
+                @"rightView" : self.rightView,
+                @"textView" : self.textView,
+                @"toolbar" : self.toolbar};
+        NSDictionary *metrics = @{ @"hor" : @(_keyboardInputViewMarginHorizontal),
+                @"ver" : @(_keyboardInputViewMarginVertical),
+                @"leftViewMargin" : @(leftViewMargin),
+                @"rightViewMargin" : @(rightViewMargin)};
+
+        constraints = [NSLayoutConstraint constraintsWithVisualFormat:@"V:|[toolbar]|"
+                                                              options:0
+                                                              metrics:metrics
+                                                                views:views];
+        [self addConstraints:constraints];
+
+        constraints = [NSLayoutConstraint constraintsWithVisualFormat:@"H:|[toolbar]|"
+                                                              options:0
+                                                              metrics:metrics
+                                                                views:views];
+        [self addConstraints:constraints];
+
+        visualFormat = @"H:|-(==hor)-[leftView]-(==hor)-[textView]-(==hor)-[rightView]-(==hor)-|";
+        constraints = [NSLayoutConstraint constraintsWithVisualFormat:visualFormat
+                                                              options:0
+                                                              metrics:metrics
+                                                                views:views];
+        [self addConstraints:constraints];
+
+        visualFormat = @"V:|-(>=leftViewMargin)-[leftView]-(==leftViewMargin)-|";
+        constraints = [NSLayoutConstraint constraintsWithVisualFormat:visualFormat
+                                                              options:0
+                                                              metrics:metrics
+                                                                views:views];
+        [self addConstraints:constraints];
+
+        visualFormat = @"V:|-(>=rightViewMargin)-[rightView]-(==rightViewMargin)-|";
+        constraints = [NSLayoutConstraint constraintsWithVisualFormat:visualFormat
+                                                              options:0
+                                                              metrics:metrics
+                                                                views:views];
+        [self addConstraints:constraints];
+
+        visualFormat = @"V:|-(==ver)-[textView]-(==ver)-|";
+        constraints = [NSLayoutConstraint constraintsWithVisualFormat:visualFormat
+                                                              options:0
+                                                              metrics:metrics
+                                                                views:views];
+        [self addConstraints:constraints];
+
+    } else if (self.rightView) {
+        NSDictionary *views = @{@"rightView" : self.rightView,
+                @"textView" : self.textView,
+                @"toolbar" : self.toolbar};
+        NSDictionary *metrics = @{ @"hor" : @(_keyboardInputViewMarginHorizontal),
+                @"ver" : @(_keyboardInputViewMarginVertical),
+                @"rightViewMargin" : @(rightViewMargin)};
+
+        constraints = [NSLayoutConstraint constraintsWithVisualFormat:@"V:|[toolbar]|"
+                                                              options:0
+                                                              metrics:metrics
+                                                                views:views];
+        [self addConstraints:constraints];
+
+        constraints = [NSLayoutConstraint constraintsWithVisualFormat:@"H:|[toolbar]|"
+                                                              options:0
+                                                              metrics:metrics
+                                                                views:views];
+        [self addConstraints:constraints];
+
+        visualFormat = @"H:|-(==hor)-[textView]-(==hor)-[rightView]-(==hor)-|";
+        constraints = [NSLayoutConstraint constraintsWithVisualFormat:visualFormat
+                                                              options:0
+                                                              metrics:metrics
+                                                                views:views];
+        [self addConstraints:constraints];
+
+        visualFormat = @"V:|-(>=rightViewMargin)-[rightView]-(==rightViewMargin)-|";
+        constraints = [NSLayoutConstraint constraintsWithVisualFormat:visualFormat
+                                                              options:0
+                                                              metrics:metrics
+                                                                views:views];
+        [self addConstraints:constraints];
+
+        visualFormat = @"V:|-(==ver)-[textView]-(==ver)-|";
+        constraints = [NSLayoutConstraint constraintsWithVisualFormat:visualFormat
+                                                              options:0
+                                                              metrics:metrics
+                                                                views:views];
+        [self addConstraints:constraints];
+
+
+    } else if (self.leftView) {
+        NSDictionary *views = @{ @"leftView" : self.leftView,
+                @"textView" : self.textView,
+                @"toolbar" : self.toolbar};
+        NSDictionary *metrics = @{ @"hor" : @(_keyboardInputViewMarginHorizontal),
+                @"ver" : @(_keyboardInputViewMarginVertical),
+                @"leftViewMargin" : @(leftViewMargin)};
+
+        constraints = [NSLayoutConstraint constraintsWithVisualFormat:@"V:|[toolbar]|"
+                                                              options:0
+                                                              metrics:metrics
+                                                                views:views];
+        [self addConstraints:constraints];
+
+        constraints = [NSLayoutConstraint constraintsWithVisualFormat:@"H:|[toolbar]|"
+                                                              options:0
+                                                              metrics:metrics
+                                                                views:views];
+        [self addConstraints:constraints];
+
+        visualFormat = @"H:|-(==hor)-[leftView]-(==hor)-[textView]-(==hor)|";
+        constraints = [NSLayoutConstraint constraintsWithVisualFormat:visualFormat
+                                                              options:0
+                                                              metrics:metrics
+                                                                views:views];
+        [self addConstraints:constraints];
+
+        visualFormat = @"V:|-(>=leftViewMargin)-[leftView]-(==leftViewMargin)-|";
+        constraints = [NSLayoutConstraint constraintsWithVisualFormat:visualFormat
+                                                              options:0
+                                                              metrics:metrics
+                                                                views:views];
+        [self addConstraints:constraints];
+
+        visualFormat = @"V:|-(==ver)-[textView]-(==ver)-|";
+        constraints = [NSLayoutConstraint constraintsWithVisualFormat:visualFormat
+                                                              options:0
+                                                              metrics:metrics
+                                                                views:views];
+        [self addConstraints:constraints];
+
+    } else {
+    NSDictionary *views = @{@"textView" : self.textView,
+            @"toolbar" : self.toolbar};
+    NSDictionary *metrics = @{ @"hor" : @(_keyboardInputViewMarginHorizontal),
+            @"ver" : @(_keyboardInputViewMarginVertical)};
+
     constraints = [NSLayoutConstraint constraintsWithVisualFormat:@"V:|[toolbar]|"
                                                           options:0
                                                           metrics:metrics
                                                             views:views];
     [self addConstraints:constraints];
-    
+
     constraints = [NSLayoutConstraint constraintsWithVisualFormat:@"H:|[toolbar]|"
                                                           options:0
                                                           metrics:metrics
                                                             views:views];
     [self addConstraints:constraints];
-    
-    visualFormat = @"H:|-(==hor)-[leftButton]-(==hor)-[textView]-(==hor)-[rightButton]-(==hor)-|";
+
+    visualFormat = @"H:|-(==hor)-[textView]-(==hor)-|";
     constraints = [NSLayoutConstraint constraintsWithVisualFormat:visualFormat
                                                           options:0
                                                           metrics:metrics
                                                             views:views];
     [self addConstraints:constraints];
-    
-    visualFormat = @"V:|-(>=leftButtonMargin)-[leftButton]-(==leftButtonMargin)-|";
-    constraints = [NSLayoutConstraint constraintsWithVisualFormat:visualFormat
-                                                          options:0
-                                                          metrics:metrics
-                                                            views:views];
-    [self addConstraints:constraints];
-    
-    visualFormat = @"V:|-(>=rightButtonMargin)-[rightButton]-(==rightButtonMargin)-|";
-    constraints = [NSLayoutConstraint constraintsWithVisualFormat:visualFormat
-                                                          options:0
-                                                          metrics:metrics
-                                                            views:views];
-    [self addConstraints:constraints];
-    
-    visualFormat = @"V:|-(==ver)-[textView]-(==ver)-|";
-    constraints = [NSLayoutConstraint constraintsWithVisualFormat:visualFormat
-                                                          options:0
-                                                          metrics:metrics
-                                                            views:views];
-    [self addConstraints:constraints];
+
+        visualFormat = @"V:|-(==ver)-[textView]-(==ver)-|";
+        constraints = [NSLayoutConstraint constraintsWithVisualFormat:visualFormat
+                                                              options:0
+                                                              metrics:metrics
+                                                                views:views];
+        [self addConstraints:constraints];
+
+}
+
 }
 
 @end
@@ -369,7 +486,7 @@ static inline UIViewAnimationOptions RDRAnimationOptionsForCurve(UIViewAnimation
     UIScrollView *scrollView = self;
     CGFloat y = scrollView.contentOffset.y;
     CGFloat yBottom = RDRContentOffsetForBottom(scrollView);
-    
+
     return (y == yBottom);
 }
 
@@ -388,17 +505,17 @@ static inline UIViewAnimationOptions RDRAnimationOptionsForCurve(UIViewAnimation
     UIScrollView *scrollView = self;
     CGPoint contentOffset = scrollView.contentOffset;
     contentOffset.y = RDRContentOffsetForBottom(scrollView);
-    
+
     void(^animations)() = ^{
         scrollView.contentOffset = contentOffset;
     };
-    
+
     void(^completion)(BOOL) = ^(BOOL finished){
         if (completionBlock) {
             completionBlock();
         }
     };
-    
+
     [UIView animateWithDuration:duration
                           delay:0.0f
                         options:options
@@ -424,21 +541,50 @@ static NSInteger const RDRInterfaceOrientationUnknown   = -1;
 
 #pragma mark - Lifecycle
 
+- (void)setTextView:(UITextView *)textView {
+    _textView = textView;
+    [self _setupSubviews];
+}
+
+- (void)setKeyboardInputViewMarginVertical:(int)keyboardInputViewMarginVertical {
+    _keyboardInputViewMarginVertical = keyboardInputViewMarginVertical;
+    _inputView.keyboardInputViewMarginVertical = keyboardInputViewMarginVertical;
+    [self _setupSubviews];
+}
+
+- (void)setKeyboardInputViewMarginHorizontal:(int)keyboardInputViewMarginHorizontal {
+    _keyboardInputViewMarginHorizontal = keyboardInputViewMarginHorizontal;
+    _inputView.keyboardInputViewMarginHorizontal = keyboardInputViewMarginHorizontal;
+    [self _setupSubviews];
+}
+
+- (void)setLeftView:(UIView *)leftView {
+    _leftView = leftView;
+    [self _setupSubviews];
+}
+
+- (void)setRightView:(UIView *)rightView {
+    _rightView = rightView;
+    [self _setupSubviews];
+}
+
 - (instancetype)initWithScrollView:(UIScrollView *)scrollView
 {
     if (self = [super init])
     {
+        _keyboardInputViewMarginHorizontal = 8;
+        _keyboardInputViewMarginVertical = 5;
         _scrollView = scrollView;
         _scrollView.autoresizingMask = UIViewAutoresizingFlexibleWidth|
-        UIViewAutoresizingFlexibleHeight;
+                UIViewAutoresizingFlexibleHeight;
         _scrollView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
-        
+
         _currentOrientation = RDRInterfaceOrientationUnknown;
-        
+
         [self _setupSubviews];
         [self _registerForNotifications];
     }
-    
+
     return self;
 }
 
@@ -455,7 +601,7 @@ static NSInteger const RDRInterfaceOrientationUnknown   = -1;
         [super willMoveToSuperview:newSuperview];
         return;
     }
-    
+
     [self _setInitialFrames];
     [super willMoveToSuperview:newSuperview];
 }
@@ -470,18 +616,59 @@ static NSInteger const RDRInterfaceOrientationUnknown   = -1;
 
 #pragma mark - Private
 
+- (void) copyControlTargetsFromView:(UIView *)origView to:(UIView *)copyView {
+    if ([origView isKindOfClass:[UIControl class]]) {
+        NSSet *allTargets = ((UIControl *)origView).allTargets;
+        UIControlEvents allControlEvents = ((UIControl *)origView).allControlEvents;
+        for (id target in allTargets) {
+            NSArray *actions = [((UIControl *) origView) actionsForTarget:target forControlEvent:allControlEvents];
+            for (NSString *action in actions) {
+                [((UIControl *) copyView) addTarget:target action:NSSelectorFromString(action) forControlEvents:allControlEvents];
+            }
+        }
+    }
+
+    if (origView.subviews.count > 0) {
+        for (int i = 0; i < origView.subviews.count; i++) {
+            if (copyView.subviews.count > i)
+                [self copyControlTargetsFromView:[origView.subviews objectAtIndex:i] to:[copyView.subviews objectAtIndex:i]];
+        }
+    }
+
+}
+
+- (UIView *) deepCopyView:(UIView *)origView {
+    UIView *copyOfView = origView == nil ? nil :
+            [NSKeyedUnarchiver unarchiveObjectWithData:[NSKeyedArchiver archivedDataWithRootObject:origView]];
+    if (copyOfView == nil)
+        return nil;
+
+    if ([origView respondsToSelector:@selector(contentEdgeInsets)])
+        ((UIButton *)copyOfView).contentEdgeInsets = ((UIButton *)origView).contentEdgeInsets;
+
+    [self copyControlTargetsFromView:origView to:copyOfView];
+
+    return copyOfView;
+}
+
 - (void)_setupSubviews
 {
+    [self.subviews makeObjectsPerformSelector:@selector(removeFromSuperview)];
     // Add scrollview as subview
     [self addSubview:self.scrollView];
-    
+
     // Setup the view where the user will actually
     // be typing in
     _inputView = [RDRKeyboardInputView new];
+    _inputView.keyboardInputViewMarginHorizontal = _keyboardInputViewMarginHorizontal;
+    _inputView.keyboardInputViewMarginVertical = _keyboardInputViewMarginVertical;
+    [_inputView setLeftView:_leftView];
+    [_inputView setRightView:_rightView];
+    [_inputView setTextView:_textView];
     self.inputView.autoresizingMask = UIViewAutoresizingFlexibleWidth|
-    UIViewAutoresizingFlexibleHeight;
+            UIViewAutoresizingFlexibleHeight;
     self.inputView.textView.delegate = self;
-    
+
     // Setup a dummy input view that appears on the bottom
     // of this view, right below the scrollview. The user will
     // tap the dummy view, whose textview's inputAccessoryView is
@@ -489,11 +676,21 @@ static NSInteger const RDRInterfaceOrientationUnknown   = -1;
     // first responder as soon as the dummy view's textview
     // has become first responder.
     self.dummyInputView = [RDRKeyboardInputView new];
+    self.dummyInputView.keyboardInputViewMarginHorizontal = _keyboardInputViewMarginHorizontal;
+    self.dummyInputView.keyboardInputViewMarginVertical = _keyboardInputViewMarginVertical;
+    UIView *copyOfLeftView = [self deepCopyView:_leftView];
+    UIView *copyOfRightView = [self deepCopyView:_rightView];
+    UITextView *copyOfTextView = (UITextView *)[self deepCopyView:_textView];
+
+    [self.dummyInputView setLeftView:copyOfLeftView];
+    [self.dummyInputView setRightView:copyOfRightView];
+    [self.dummyInputView setTextView:copyOfTextView];
     self.dummyInputView.autoresizingMask = UIViewAutoresizingFlexibleWidth|
-    UIViewAutoresizingFlexibleTopMargin;
+            UIViewAutoresizingFlexibleTopMargin;
     self.dummyInputView.textView.inputAccessoryView = self.inputView;
     self.dummyInputView.textView.tintColor = [UIColor clearColor]; // hide cursor
     self.dummyInputView.textView.delegate = self;
+
     [self addSubview:self.dummyInputView];
 }
 
@@ -503,11 +700,11 @@ static NSInteger const RDRInterfaceOrientationUnknown   = -1;
     scrollViewFrame.size.width = self.frame.size.width;
     scrollViewFrame.size.height = self.frame.size.height - self.inputView.frame.size.height;
     self.scrollView.frame = scrollViewFrame;
-    
+
     CGRect inputViewFrame = self.inputView.frame;
     inputViewFrame.size.width = self.frame.size.width;
     self.inputView.frame = inputViewFrame;
-    
+
     CGRect dummyInputViewFrame = CGRectZero;
     dummyInputViewFrame.origin.y = self.frame.size.height - inputViewFrame.size.height;
     dummyInputViewFrame.size = inputViewFrame.size;
@@ -522,12 +719,12 @@ static NSInteger const RDRInterfaceOrientationUnknown   = -1;
                                              selector:@selector(_keyboardWillShow:)
                                                  name:UIKeyboardWillShowNotification
                                                object:nil];
-    
+
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(_keyboardWillChangeFrame:)
                                                  name:UIKeyboardWillChangeFrameNotification
                                                object:nil];
-    
+
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(_keyboardWillHide:)
                                                  name:UIKeyboardWillHideNotification
@@ -539,11 +736,11 @@ static NSInteger const RDRInterfaceOrientationUnknown   = -1;
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:UIKeyboardWillShowNotification
                                                   object:nil];
-    
+
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:UIKeyboardWillChangeFrameNotification
                                                   object:nil];
-    
+
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:UIKeyboardWillHideNotification
                                                   object:nil];
@@ -559,44 +756,44 @@ static NSInteger const RDRInterfaceOrientationUnknown   = -1;
     CGRect beginFrame = [userInfo[UIKeyboardFrameBeginUserInfoKey] CGRectValue];
     CGFloat duration = [userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
     UIViewAnimationCurve curve = [userInfo[UIKeyboardAnimationCurveUserInfoKey] integerValue];
-    
+
     // Check if orientation changed
     [self _updateInputViewFrameIfOrientationChanged:endFrame];
-    
+
     // This method is called because the user has tapped
     // the dummy input view, which has become first responder.
     // Take over first responder status from the dummy input view
     // and transfer it to the actual input view, which is the
     // inputAccessoryView of the dummy input view.
     [self.inputView.textView becomeFirstResponder];
-    
+
     // Disregard false notification
     // This works around a bug in iOS
     CGRect inputViewBounds = self.inputView.bounds;
     if (RDRKeyboardSizeEqualsInputViewSize(endFrame, inputViewBounds)) {
         return;
     }
-    
+
     if (RDRKeyboardSizeEqualsInputViewSize(beginFrame, inputViewBounds)) {
         return;
     }
-    
+
     // New and old keyboard origin should differ exactly
     // one keyboard height
     if (!RDRKeyboardFrameChangeIsShowHideAnimation(beginFrame, endFrame)) {
         return;
     }
-    
+
     // Make sure the keyboard is actually shown
     if (!RDRKeyboardIsFullyShown(endFrame)) {
         return;
     }
-    
+
     // Make sure the keyboard was not already shown
     if (RDRKeyboardIsFullyShown(beginFrame)) {
         return;
     }
-    
+
     [self _scrollViewAdaptInsetsToKeyboardFrame:endFrame];
     [self.scrollView rdr_scrollToBottomWithOptions:RDRAnimationOptionsForCurve(curve)
                                           duration:duration
@@ -606,13 +803,13 @@ static NSInteger const RDRInterfaceOrientationUnknown   = -1;
 - (void)_keyboardWillChangeFrame:(NSNotification *)notification
 {
     // This method is called many times on different occasions.
-    
+
     // This method is called when the user has stopped dragging
     // the keyboard and it is about to animate downwards.
     // The keyboardWillHide method determines if that is the case
     // and adjusts the interface accordingly.
     [self _keyboardWillHide:notification];
-    
+
     // This method is called when the user has switched
     // to a different keyboard. The keyboardWillSwitch method
     // determines if that is the case and adjusts the interface
@@ -627,14 +824,14 @@ static NSInteger const RDRInterfaceOrientationUnknown   = -1;
     CGRect beginFrame = [userInfo[UIKeyboardFrameBeginUserInfoKey] CGRectValue];
     CGFloat duration = [userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
     UIViewAnimationCurve curve = [userInfo[UIKeyboardAnimationCurveUserInfoKey] integerValue];
-    
+
     // When the user has lifted his or her finger, the
     // size of the end frame equals the size of the input view.
     CGRect inputViewBounds = self.inputView.bounds;
     if (!RDRKeyboardSizeEqualsInputViewSize(endFrame, inputViewBounds)) {
         return;
     }
-    
+
     // Construct the frame that should actually have been
     // passed into the userinfo dictionary and use it
     // internally.
@@ -644,11 +841,11 @@ static NSInteger const RDRInterfaceOrientationUnknown   = -1;
     UIView *view = self.window.rootViewController.view;
     CGRect beginFrameConverted = [view convertRect:beginFrame
                                           fromView:nil];
-    
+
     CGRect viewRect = CGRectZero;
     viewRect.origin.y = view.bounds.size.height;
     viewRect.size = beginFrameConverted.size;
-    
+
     CGRect windowRect = [self.window convertRect:viewRect fromView:view];
     [self _scrollViewAdaptInsetsToKeyboardFrame:windowRect];
     [self.scrollView rdr_scrollToBottomWithOptions:RDRAnimationOptionsForCurve(curve)
@@ -665,33 +862,33 @@ static NSInteger const RDRInterfaceOrientationUnknown   = -1;
     CGRect beginFrame = [userInfo[UIKeyboardFrameBeginUserInfoKey] CGRectValue];
     CGFloat duration = [userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
     UIViewAnimationCurve curve = [userInfo[UIKeyboardAnimationCurveUserInfoKey] integerValue];
-    
+
     // Disregard false notification
     // This works around a bug in iOS
     CGRect inputViewBounds = self.inputView.bounds;
     if (RDRKeyboardSizeEqualsInputViewSize(endFrame, inputViewBounds)) {
         return;
     }
-    
+
     if (RDRKeyboardSizeEqualsInputViewSize(beginFrame, inputViewBounds)) {
         return;
     }
-    
+
     // Disregard when old and new keyboard origin differ
     // exactly one keyboard height
     if (RDRKeyboardFrameChangeIsShowHideAnimation(beginFrame, endFrame)) {
         return;
     }
-    
+
     // Make sure keyboard is fully shown
     if (RDRKeyboardIsFullyHidden(endFrame)) {
         return;
     }
-    
+
     // Only handle the case when the keyboard is already visible
     // and the user changes to a different keyboard that has a
     // different height.
-    
+
     [self _scrollViewAdaptInsetsToKeyboardFrame:endFrame];
     [self.scrollView rdr_scrollToBottomWithOptions:RDRAnimationOptionsForCurve(curve)
                                           duration:duration
@@ -707,20 +904,20 @@ static NSInteger const RDRInterfaceOrientationUnknown   = -1;
     UIView *view = window.rootViewController.view;
     CGRect convertedRect = [view convertRect:keyboardFrame
                                     fromView:nil];
-    
+
     CGFloat keyboardHeight = convertedRect.size.height;
     CGFloat inputViewHeight = self.inputView.bounds.size.height;
-    
+
     // If the keyboard is hidden, set bottom inset to zero.
     // If the keyboard is not hidden, set the content inset's bottom
     // to the height of the area occupied by the keyboard itself.
     CGFloat bottomInset = keyboardHeight - inputViewHeight;
     bottomInset *= RDRKeyboardIsFullyHidden(keyboardFrame) ? 0 : 1;
-    
+
     UIEdgeInsets contentInset = self.scrollView.contentInset;
     contentInset.bottom = bottomInset;
     self.scrollView.contentInset = contentInset;
-    
+
     UIEdgeInsets scrollIndicatorInsets = self.scrollView.scrollIndicatorInsets;
     scrollIndicatorInsets.bottom = bottomInset;
     self.scrollView.scrollIndicatorInsets = scrollIndicatorInsets;
@@ -733,13 +930,13 @@ static NSInteger const RDRInterfaceOrientationUnknown   = -1;
     // Check if orientation changed
     UIApplication *application = [UIApplication sharedApplication];
     UIInterfaceOrientation orientation = application.statusBarOrientation;
-    
+
     if (_currentOrientation != RDRInterfaceOrientationUnknown &&
-        _currentOrientation != orientation) {
+            _currentOrientation != orientation) {
         [self _updateInputViewFrameWithKeyboardFrame:keyboardFrame
                                          forceReload:YES];
     }
-    
+
     _currentOrientation = orientation;
 }
 
@@ -751,56 +948,56 @@ static NSInteger const RDRInterfaceOrientationUnknown   = -1;
     // to access the keyboard's frame.
 #ifdef DEBUG
     NSCAssert(!(CGRectEqualToRect(keyboardFrame, CGRectZero) &&
-                self.inputView.superview == nil), nil);
+            self.inputView.superview == nil), nil);
 #endif
-    
+
     // Check if we can manually grab the keyboard's frame.
     // If not, use the keyboardFrame parameter.
     UIWindow *window = [UIApplication sharedApplication].keyWindow;
     UIView *view = window.rootViewController.view;
     CGRect windowKeyboardFrame = keyboardFrame;
-    
+
     if (self.inputView.superview != nil) {
         windowKeyboardFrame = [window convertRect:self.inputView.superview.frame
                                          fromView:self.inputView.superview.superview];
     }
-    
+
     // Convert keyboard frame to view coordinates
     CGRect viewKeyboardFrame = [view convertRect:windowKeyboardFrame
                                         fromView:nil];
-    
+
     // Calculate max input view height
     CGFloat maxInputViewHeight = viewKeyboardFrame.origin.y -
-    self.frame.origin.y - self.scrollView.contentInset.top;
+            self.frame.origin.y - self.scrollView.contentInset.top;
     maxInputViewHeight += self.inputView.bounds.size.height;
-    
+
     // Calculate the height the input view ideally
     // has based on its textview's content
     UITextView *textView = self.inputView.textView;
     CGFloat newInputViewHeight = RDRTextViewHeight(textView);
-    newInputViewHeight += (2 * RDR_KEYBOARD_INPUT_VIEW_MARGIN_VERTICAL);
+    newInputViewHeight += (2 * _keyboardInputViewMarginVertical);
     newInputViewHeight = ceilf(newInputViewHeight);
     newInputViewHeight = MIN(maxInputViewHeight, newInputViewHeight);
-    
+
     // If the new input view height equals the current,
     // nothing has to be changed
     if (self.inputView.bounds.size.height == newInputViewHeight) {
         return;
     }
-    
+
     // Propagate the height change
     // Update the scrollview's frame
     CGRect scrollViewFrame = self.scrollView.frame;
     scrollViewFrame.size.height = self.frame.size.height - newInputViewHeight;
     self.scrollView.frame = scrollViewFrame;
-    
+
     // The new input view height is different from the current.
     // Update the dummy input view's frame
     CGRect dummyInputViewFrame = self.dummyInputView.frame;
     dummyInputViewFrame.size.height = newInputViewHeight;
     dummyInputViewFrame.origin.y = self.frame.size.height - newInputViewHeight;
     self.dummyInputView.frame = dummyInputViewFrame;
-    
+
     // Update the actual input view's height
     // This will cause the keyboardWillChange notification to be fired.
     // The handler of the keyboardWillChange notification will
@@ -809,7 +1006,7 @@ static NSInteger const RDRInterfaceOrientationUnknown   = -1;
     CGRect inputViewFrame = self.inputView.frame;
     inputViewFrame.size.height = newInputViewHeight;
     self.inputView.frame = inputViewFrame;
-    
+
     // If the changes should be propagated with force,
     // call reloadInputViews on the dummy text view.
     // reloadInputViews will only have effect if the
@@ -828,18 +1025,25 @@ static NSInteger const RDRInterfaceOrientationUnknown   = -1;
     if (textView != self.inputView.textView) {
         return YES;
     }
-    
+
     // Synchronize text between actual input view and
     // dummy input view.
-    self.dummyInputView.textView.text = textView.text;
-    
+    self.dummyInputView.textView.text = textView.text = _text;
+
     return YES;
+}
+
+- (void)setText:(NSString *)text {
+    _text = text;
+    _inputView.textView.text = text;
+    self.dummyInputView.textView.text = text;
 }
 
 - (void)textViewDidChange:(UITextView *)textView
 {
     [self _updateInputViewFrameWithKeyboardFrame:CGRectZero
                                      forceReload:NO];
+    _text = textView.text;
 }
 
 @end

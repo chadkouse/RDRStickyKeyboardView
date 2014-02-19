@@ -32,9 +32,11 @@
 
 @interface RDRKeyboardInputView : UIView
 
-@property (nonatomic, strong, readonly) UIButton *leftButton;
-@property (nonatomic, strong, readonly) UIButton *rightButton;
-@property (nonatomic, strong, readonly) UITextView *textView;
+@property (nonatomic, strong) UIView *leftView;
+@property (nonatomic, strong) UIView *rightView;
+@property (nonatomic, strong) UITextView *textView;
+@property (nonatomic) int keyboardInputViewMarginVertical;
+@property (nonatomic) int keyboardInputViewMarginHorizontal;
 
 @end
 
@@ -58,6 +60,16 @@
 
 @property (nonatomic, strong, readonly) UIScrollView *scrollView;
 @property (nonatomic, strong, readonly) RDRKeyboardInputView *inputView;
+@property (nonatomic, strong) UIView *leftView;
+@property (nonatomic, strong) UIView *rightView;
+@property (nonatomic, strong) UITextView *textView;
+@property (nonatomic, strong) NSString *text;
+@property (nonatomic) int keyboardInputViewMarginVertical;
+@property (nonatomic) int keyboardInputViewMarginHorizontal;
+
+- (void)setLeftView:(UIView *)leftView;
+
+- (void)setRightView:(UIView *)rightView;
 
 // Designated initializer
 - (instancetype)initWithScrollView:(UIScrollView *)scrollView;
